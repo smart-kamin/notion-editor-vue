@@ -1,6 +1,6 @@
 {
-  "name": "@kamin/tiptap-editor",
-  "version": "0.1.0",
+  "name": "@smart-kamin/notion-editor-vue",
+  "version": "0.1.2",
   "type": "module",
   "description": "Notion-style Tiptap editor for Vue 3",
   "files": ["dist"],
