@@ -20,9 +20,15 @@ Notion-style rich text editor для Vue 3, построенный на базе
 - **Вставка Markdown** — автоматически конвертируется при paste
 - **Тёмная тема** — через CSS-переменные shadcn/oklch, работает автоматически
 
+## Demo
+
+**[→ Открыть демо](https://smart-kamin.github.io/notion-editor-vue/)**
+
+Live-редактор с переключением форматов вывода (Markdown / HTML / JSON / Text) и тёмной темой.
+
 ---
 
-## Установка
+
 
 ```bash
 pnpm add github:smart-kamin/notion-editor-vue#v0.1.3
