@@ -657,7 +657,7 @@ var Re = (e) => {
 	let n = e.__vccOpts || e;
 	for (let [e, r] of t) n[e] = r;
 	return n;
-}, jt = /* @__PURE__ */ Z(At, [["__scopeId", "data-v-cc5cb721"]]), Mt = ee.extend({
+}, jt = /* @__PURE__ */ Z(At, [["__scopeId", "data-v-886f8cf5"]]), Mt = ee.extend({
 	addAttributes() {
 		return {
 			...this.parent?.(),
@@ -978,7 +978,7 @@ var Re = (e) => {
 			]))
 		], 64));
 	}
-}), [["__scopeId", "data-v-71b2ad3f"]]), Rt = U.configure({
+}), [["__scopeId", "data-v-23910278"]]), Rt = U.configure({
 	openOnClick: !1,
 	autolink: !0,
 	linkOnPaste: !0,
@@ -1112,7 +1112,7 @@ var Re = (e) => {
 			_: 1
 		})], 64));
 	}
-}), [["__scopeId", "data-v-5f9c01c3"]]), Ht = {
+}), [["__scopeId", "data-v-5e6cc804"]]), Ht = {
 	key: 0,
 	class: "ed-blockquote__fade"
 }, Ut = ["title"], Wt = 500, Gt = "7rem", Kt = /* @__PURE__ */ u({
@@ -2178,7 +2178,7 @@ var un = ["title"], dn = ["title", "onClick"], fn = ["title", "onClick"], pn = /
 			_: 1
 		})]));
 	}
-}), [["__scopeId", "data-v-4e409fc7"]]), mn = [
+}), [["__scopeId", "data-v-09847e9c"]]), mn = [
 	{
 		title: "Текст",
 		description: "Обычный параграф",
@@ -2472,7 +2472,7 @@ var un = ["title"], dn = ["title", "onClick"], fn = ["title", "onClick"], pn = /
 			_: 1
 		})]));
 	}
-}), [["__scopeId", "data-v-444c5748"]]), kn = {
+}), [["__scopeId", "data-v-bb658ff5"]]), kn = {
 	key: 0,
 	class: "sm__empty"
 }, An = { class: "sm__group-label" }, jn = ["data-selected", "onMousedown"], Mn = { class: "sm__item-icon" }, Nn = { class: "sm__item-body" }, Pn = { class: "sm__item-title" }, Fn = { class: "sm__item-desc" }, In = 272, Ln = 360, Rn = /* @__PURE__ */ Z(/* @__PURE__ */ u({
@@ -2565,7 +2565,7 @@ var un = ["title"], dn = ["title", "onClick"], fn = ["title", "onClick"], pn = /
 			"on-upload"
 		])], 64));
 	}
-}), [["__scopeId", "data-v-681db22f"]]), $ = y({
+}), [["__scopeId", "data-v-05837410"]]), $ = y({
 	visible: !1,
 	y: 0,
 	blockPos: -1,
@@ -2785,7 +2785,7 @@ var Vn = Pe.create({
 			_: 1
 		}));
 	}
-}), [["__scopeId", "data-v-5cf39ce3"]]), Un = {
+}), [["__scopeId", "data-v-ec6c96bb"]]), Un = {
 	а: "a",
 	б: "b",
 	в: "v",
@@ -3068,7 +3068,7 @@ var Jn = new Te("headingAnchor"), Yn = Pe.create({
 			y.value ? (v(), o("div", Xn, "Загрузка изображения…")) : a("", !0)
 		], 2));
 	}
-}), [["__scopeId", "data-v-dea51c84"]]);
+}), [["__scopeId", "data-v-9cbc4388"]]);
 //#endregion
 export { Qn as DocEditor, mn as SLASH_ITEMS, Gn as anchorFor, qt as blockquoteExtension, cn as codeBlockExtension, qn as collectHeadings, Vn as dragHandleExtension, $ as dragHandleState, Yn as headingAnchorExtension, Mt as imageExtension, Rt as linkExtension, hn as slashMenuExtension, Q as slashState, Wn as slugify, ln as syncCodeBlocksEditable, Nt as tableExtensions };
 
