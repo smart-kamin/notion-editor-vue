@@ -112,6 +112,10 @@ export class CodeMirrorNodeView {
   cm: CMEditorView
 
   private langConf = new Compartment()
+  // Редактируемость CodeMirror живёт в своём Compartment, чтобы её можно было
+  // переконфигурировать без пересборки состояния — см. syncEditable().
+  private editableConf = new Compartment()
+  private wasEditable: boolean
   private updating = false
 
   private langBadge: HTMLElement
@@ -132,10 +136,18 @@ export class CodeMirrorNodeView {
   private fadeEl:       HTMLElement
   private isCollapsed   = false
 
-  constructor(node: PMNode, view: PMEditorView, getPos: () => number) {
+  constructor(
+    node: PMNode,
+    view: PMEditorView,
+    getPos: () => number,
+    /** Куда записаться, чтобы расширение могло дотянуться до живых блоков. */
+    private readonly registry?: Set<CodeMirrorNodeView>,
+  ) {
     this.node    = node
     this.view    = view
     this.getPos  = getPos
+    this.wasEditable = view.editable
+    this.registry?.add(this)
     injectCodeBlockStyles()
 
     // ── Внешняя обёртка ───────────────────────────────────────────────────────
@@ -237,6 +249,10 @@ export class CodeMirrorNodeView {
           syntaxHighlighting(shadcnHighlightStyle, { fallback: true }),
           shadcnTheme,
           this.langConf.of([]),
+          // CMEditorView.editable, а НЕ EditorState.readOnly: выделение и
+          // копирование мышью должны остаться живыми — на них держится
+          // комментирование фрагмента у потребителя. readOnly отнял бы и это.
+          this.editableConf.of(CMEditorView.editable.of(view.editable)),
           keymap.of([
             ...this.buildKeymap(),
             indentWithTab,
@@ -249,6 +265,9 @@ export class CodeMirrorNodeView {
       }),
       parent: cmWrap,
     })
+
+    // Начальное состояние кнопок: блок мог родиться сразу в просмотре.
+    this.applyEditableToChrome(this.wasEditable)
 
     setTimeout(() => this.applyLanguage(node.attrs.language, node.textContent), 0)
   }
@@ -358,6 +377,7 @@ export class CodeMirrorNodeView {
 
     this.applyLanguage(node.attrs.language, node.textContent)
     this.syncCollapseState(newText)
+    this.syncEditable()
 
     return true
   }
@@ -594,7 +614,45 @@ export class CodeMirrorNodeView {
 
   // ── Language picker ───────────────────────────────────────────────────────
 
+  /**
+   * Подтянуть редактируемость CodeMirror к режиму внешнего редактора.
+   *
+   * Зовут ДВА места, и одного из них недостаточно:
+   *
+   *   * update() — когда нода перерисовалась (правка текста, смена языка);
+   *   * расширение (index.ts: syncCodeBlocksEditable) — когда переключили
+   *     editable у всего редактора. setEditable у ProseMirror до node view
+   *     не доходит: документ не менялся, реконсиляция ноду не трогает, и
+   *     без внешнего толчка блок кода остался бы редактируемым в просмотре.
+   *     Ровно так это и было сломано при первой попытке.
+   *
+   * Сравниваем с запомненным значением, чтобы не дёргать reconfigure на
+   * каждой правке текста.
+   */
+  syncEditable() {
+    const editable = this.view.editable
+    if (editable === this.wasEditable) return
+    this.wasEditable = editable
+    this.cm.dispatch({
+      effects: this.editableConf.reconfigure(CMEditorView.editable.of(editable)),
+    })
+    this.applyEditableToChrome(editable)
+  }
+
+  /**
+   * Кнопки на рамке блока в режиме просмотра.
+   *
+   * Прячется только выбор языка — он правит атрибут ноды. «Копировать» и
+   * сворачивание ОСТАЮТСЯ: это обычные DOM-кнопки вне документа, читателю они
+   * нужны ровно так же, как автору.
+   */
+  private applyEditableToChrome(editable: boolean) {
+    this.editBtn.style.display = editable ? '' : 'none'
+    if (!editable) this.closePicker()
+  }
+
   private togglePicker() {
+    if (!this.view.editable) return
     if (this.picker) { this.closePicker(); return }
     this.openPicker()
   }
@@ -694,6 +752,7 @@ export class CodeMirrorNodeView {
   }
 
   private setLanguage(lang: string | null) {
+    if (!this.view.editable) return
     const pos = this.getPos()
     const tr  = this.view.state.tr.setNodeMarkup(
       pos, undefined, { ...this.node.attrs, language: lang },
@@ -715,6 +774,7 @@ export class CodeMirrorNodeView {
   // ── Cleanup ───────────────────────────────────────────────────────────────
 
   destroy() {
+    this.registry?.delete(this)
     if (this.copyTimer)   clearTimeout(this.copyTimer)
     if (this.detectTimer) clearTimeout(this.detectTimer)
     this.closePicker()

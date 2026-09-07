@@ -1,12 +1,40 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { DocEditor } from '@smart-kamin/notion-editor-vue'
-import type { OutputFormat } from '@smart-kamin/notion-editor-vue'
+import { DocEditor, collectHeadings } from '@smart-kamin/notion-editor-vue'
+import type { Heading, OutputFormat } from '@smart-kamin/notion-editor-vue'
 
 const dark         = ref(false)
 const outputFormat = ref<OutputFormat>('markdown')
 const content      = ref('')
 const copied       = ref(false)
+const editable     = ref(true)
+const uploadError  = ref('')
+
+// Демонстрация onImageUpload: настоящего бэкенда тут нет, поэтому изображаем
+// сетевую задержку и возвращаем blob-URL — ровно то, что в проде вернёт
+// обёртка над приватным хранилищем.
+const uploadFail = ref(false)
+
+async function upload(file: File): Promise<string> {
+  uploadError.value = ''
+  await new Promise((resolve) => setTimeout(resolve, 900))
+  if (uploadFail.value) throw new Error('Хранилище недоступно (это демо)')
+  return URL.createObjectURL(file)
+}
+
+function scrollToHeading(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// Оглавление считается по JSON документа, а не по инстансу редактора.
+const toc = computed<Heading[]>(() => {
+  if (outputFormat.value !== 'json' || !content.value) return []
+  try {
+    return collectHeadings(JSON.parse(content.value))
+  } catch {
+    return []
+  }
+})
 
 const outputLabel = computed(() => ({
   html:     'HTML',
@@ -60,6 +88,42 @@ async function copy() {
 
         <div class="topbar__divider" />
 
+        <div class="format-switcher">
+          <span class="format-switcher__label">Mode</span>
+          <div class="format-switcher__pills">
+            <button
+                class="format-pill"
+                :class="{ 'format-pill--active': editable }"
+                @click="editable = true"
+            >edit</button>
+            <button
+                class="format-pill"
+                :class="{ 'format-pill--active': !editable }"
+                @click="editable = false"
+            >read-only</button>
+          </div>
+        </div>
+
+        <div class="topbar__divider" />
+
+        <div class="format-switcher">
+          <span class="format-switcher__label">Upload</span>
+          <div class="format-switcher__pills">
+            <button
+                class="format-pill"
+                :class="{ 'format-pill--active': !uploadFail }"
+                @click="uploadFail = false"
+            >ok</button>
+            <button
+                class="format-pill"
+                :class="{ 'format-pill--active': uploadFail }"
+                @click="uploadFail = true"
+            >fail</button>
+          </div>
+        </div>
+
+        <div class="topbar__divider" />
+
         <button class="topbar__btn" @click="toggleDark">
           <span v-if="dark">☀︎</span><span v-else>☽</span>
         </button>
@@ -89,8 +153,32 @@ async function copy() {
               Press <kbd>/</kbd> to insert blocks &middot; select text to format
             </p>
           </div>
+
+          <!-- Оглавление: только на output-format="json", потому что считается
+               по документу, а не по разметке. -->
+          <nav v-if="toc.length" class="demo-toc">
+            <span class="demo-toc__label">Contents</span>
+            <a
+                v-for="heading in toc"
+                :key="heading.id"
+                class="demo-toc__item"
+                :class="`demo-toc__item--h${heading.level}`"
+                :href="`#${heading.id}`"
+                @click.prevent="scrollToHeading(heading.id)"
+            >{{ heading.text || '—' }}</a>
+          </nav>
+
+          <p v-if="uploadError" class="demo-error">{{ uploadError }}</p>
+
           <div class="editor-wrap">
-            <DocEditor v-model="content" :output-format="outputFormat" />
+            <DocEditor
+                v-model="content"
+                :output-format="outputFormat"
+                :editable="editable"
+                :on-image-upload="upload"
+                @image-upload-error="(e) => uploadError = e instanceof Error ? e.message : String(e)"
+                @parse-error="(e) => uploadError = 'Не разобрался документ: ' + String(e)"
+            />
           </div>
         </div>
       </section>
@@ -286,5 +374,44 @@ async function copy() {
 .copy-btn--done {
   color: oklch(0.6 0.15 150);
   border-color: color-mix(in oklch, oklch(0.6 0.15 150) 40%, transparent);
+}
+
+/* ── Оглавление (collectHeadings) ── */
+.demo-toc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 0.875rem;
+  border-left: 0.125rem solid var(--border);
+}
+
+.demo-toc__label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+  margin-bottom: 0.25rem;
+}
+
+.demo-toc__item {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+.demo-toc__item:hover { color: var(--foreground); }
+.demo-toc__item--h2 { padding-left: 0.75rem; }
+.demo-toc__item--h3 { padding-left: 1.5rem; }
+
+/* ── Ошибка аплоада ── */
+.demo-error {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  border: 0.0625rem solid color-mix(in oklch, var(--destructive) 40%, transparent);
+  background: color-mix(in oklch, var(--destructive) 8%, transparent);
+  color: var(--destructive);
+  font-size: 0.8125rem;
 }
 </style>

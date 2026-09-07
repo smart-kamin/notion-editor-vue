@@ -30,7 +30,28 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Commit dist and retag
+      # Гейт, которого не было. Один раз генерация типов молча отдала
+      # `export { }` — 12 байт вместо всего API, — и это уехало в релиз:
+      # у потребителя, который собирается через vue-tsc, пропал сам DocEditor.
+      # Сборка обязана падать здесь, а не у потребителя.
+      - name: Check declaration output
+        run: |
+          test -f dist/index.d.ts || { echo "dist/index.d.ts не собрался"; exit 1; }
+          for symbol in DocEditor OutputFormat collectHeadings; do
+            grep -q "$symbol" dist/index.d.ts || {
+              echo "В dist/index.d.ts нет $symbol — типы собрались пустыми"
+              echo "--- dist/index.d.ts ---"; cat dist/index.d.ts; exit 1; }
+          done
+
+      # История main остаётся append-only. Раньше здесь стоял `git commit
+      # --amend` + `push --force` на ветку, и из-за этого ЛЮБОЙ уже выданный
+      # SHA переставал существовать — а потребитель пиннится именно на SHA.
+      #
+      # Тег при этом переезжает на коммит с dist, и иначе нельзя: пакет
+      # ставят git-зависимостью, значит собранные файлы обязаны быть в том
+      # коммите, на который смотрит ссылка. Переставить метку — не то же, что
+      # перезаписать историю.
+      - name: Commit dist
         run: |
           TAG="${{ github.ref_name }}"
           git config user.name  "github-actions[bot]"
@@ -39,9 +60,9 @@ jobs:
           if git diff --cached --quiet; then
             echo "dist unchanged, skipping"
           else
-            git commit --amend --no-edit
+            git commit -m "chore: сборка dist для $TAG"
+            git push origin HEAD:refs/heads/main
             git tag -f "$TAG"
-            git push origin HEAD:refs/heads/main --force
             git push origin "$TAG" --force
           fi
 

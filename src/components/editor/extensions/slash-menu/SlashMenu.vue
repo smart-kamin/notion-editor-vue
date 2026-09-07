@@ -5,6 +5,14 @@ import { slashState } from './index'
 import type { SlashItem } from './index'
 import ImageInsertPopover from './ImageInsertPopover.vue'
 
+// Обработчик аплоада приезжает пропом от DocEditor и уходит дальше в поповер.
+// Через модульный slashState его не протащить: там состояние подсказки, а не
+// конфигурация редактора, и обработчиков там может быть столько же, сколько
+// смонтированных редакторов.
+defineProps<{
+  onImageUpload?: (file: File) => Promise<string>
+}>()
+
 // ── Группировка по категориям ─────────────────────────────────────────────────
 
 const grouped = computed(() => {
@@ -152,6 +160,7 @@ function onImageClose() {
     :visible="imagePopoverVisible"
     :x="imagePopoverX"
     :y="imagePopoverY"
+    :on-upload="onImageUpload"
     @insert="onImageInsert"
     @close="onImageClose"
   />

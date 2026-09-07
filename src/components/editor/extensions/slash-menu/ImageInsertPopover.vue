@@ -8,6 +8,11 @@ const props = defineProps<{
   visible:   boolean
   x:         number
   y:         number
+  /**
+   * Куда девать выбранный файл. Задан — грузим им и вставляем возвращённый
+   * src. Не задан — прежнее поведение: файл инлайнится как base64 data URL.
+   */
+  onUpload?: (file: File) => Promise<string>
 }>()
 
 const emit = defineEmits<{
@@ -24,6 +29,7 @@ const urlValue  = ref('')
 const error     = ref('')
 const urlInput  = ref<HTMLInputElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
 
 // ── Автофокус при открытии ────────────────────────────────────────────────────
 
@@ -32,6 +38,7 @@ watch(() => props.visible, (v) => {
     activeTab.value = 'url'
     urlValue.value  = ''
     error.value     = ''
+    uploading.value = false
     nextTick(() => urlInput.value?.focus())
   }
 })
@@ -67,26 +74,49 @@ function onUrlKeydown(e: KeyboardEvent) {
 // ── Загрузка файла ────────────────────────────────────────────────────────────
 
 function triggerFileInput() {
+  if (uploading.value) return
   fileInput.value?.click()
 }
 
-function onFileChange(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
+async function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file  = input.files?.[0]
+  // Сбрасываем input сразу: иначе повторный выбор ТОГО ЖЕ файла (например
+  // после ошибки аплоада) не вызовет change и кнопка будет выглядеть мёртвой.
+  input.value = ''
+
   if (!file) return
   if (!file.type.startsWith('image/')) { error.value = 'Выберите файл изображения'; return }
-  const reader = new FileReader()
-  reader.onload = (ev) => {
-    const src = ev.target?.result as string
-    emit('insert', src)
+
+  error.value = ''
+
+  if (!props.onUpload) {
+    const reader = new FileReader()
+    reader.onload = (ev) => emit('insert', ev.target?.result as string)
+    reader.readAsDataURL(file)
+    return
   }
-  reader.readAsDataURL(file)
-  // Сбрасываем input, чтобы можно было выбрать тот же файл снова
-  ;(e.target as HTMLInputElement).value = ''
+
+  uploading.value = true
+  try {
+    emit('insert', await props.onUpload(file))
+  } catch (uploadError) {
+    // Поповер НЕ закрываем и таб не меняем: человек только что выбрал файл,
+    // и закрытие выглядело бы как «получилось».
+    error.value = uploadError instanceof Error && uploadError.message
+      ? uploadError.message
+      : 'Не удалось загрузить файл'
+  } finally {
+    uploading.value = false
+  }
 }
 
 // ── Клик вне поповера ────────────────────────────────────────────────────────
 
 function onOverlayClick() {
+  // Пока файл грузится, закрывать нечего: вставка всё равно случится, и
+  // закрытый поповер сделал бы её неожиданной.
+  if (uploading.value) return
   emit('close')
 }
 
@@ -120,6 +150,7 @@ function stopPropagation(e: MouseEvent) {
             <button
               class="ip__tab"
               :class="{ 'ip__tab--active': activeTab === 'url' }"
+              :disabled="uploading"
               @mousedown.prevent="() => { activeTab = 'url'; nextTick(() => urlInput?.focus()) }"
             >
               <Link :size="12" />
@@ -128,6 +159,7 @@ function stopPropagation(e: MouseEvent) {
             <button
               class="ip__tab"
               :class="{ 'ip__tab--active': activeTab === 'upload' }"
+              :disabled="uploading"
               @mousedown.prevent="activeTab = 'upload'"
             >
               <Upload :size="12" />
@@ -159,9 +191,13 @@ function stopPropagation(e: MouseEvent) {
             <!-- Upload вкладка -->
             <template v-else>
               <p v-if="error" class="ip__error">{{ error }}</p>
-              <button class="ip__upload-btn" @mousedown.prevent="triggerFileInput">
+              <button
+                class="ip__upload-btn"
+                :disabled="uploading"
+                @mousedown.prevent="triggerFileInput"
+              >
                 <Upload :size="16" />
-                Выбрать файл
+                {{ uploading ? 'Загрузка…' : 'Выбрать файл' }}
               </button>
               <p class="ip__hint">PNG, JPG, GIF, WebP, SVG, AVIF</p>
               <input
@@ -360,10 +396,18 @@ function stopPropagation(e: MouseEvent) {
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 
-.ip__upload-btn:hover {
+.ip__upload-btn:hover:not(:disabled) {
   background: var(--accent);
   color: var(--accent-foreground);
   border-color: transparent;
+}
+
+/* Пока идёт аплоад, кнопки и табы заблокированы: второй файл поверх первого
+   означал бы гонку двух вставок. */
+.ip__upload-btn:disabled,
+.ip__tab:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* ── Хинт ── */

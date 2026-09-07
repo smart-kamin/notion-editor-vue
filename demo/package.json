@@ -8,7 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@smart-kamin/notion-editor-vue": "file:..",
+    "@smart-kamin/notion-editor-vue": "link:..",
     "vue": "^3.5.31"
   },
   "devDependencies": {

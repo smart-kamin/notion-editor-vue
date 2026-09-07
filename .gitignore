@@ -9,7 +9,13 @@ lerna-debug.log*
 
 node_modules/
 .DS_Store
+# Любой dist игнорируем, КРОМЕ корневого: пакет dist-committed — его
+# ставят git-зависимостью, и собранные файлы обязаны лежать в
+# репозитории (см. .github/workflows/release.yml). Раньше здесь стояло
+# просто «dist», и это было ложью: корневой dist всё равно
+# отслеживается, его добавили через `git add -f`.
 dist
+!/dist
 dist-ssr
 coverage
 *.local

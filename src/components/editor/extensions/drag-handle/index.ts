@@ -47,10 +47,25 @@ export const dragHandleExtension = Extension.create({
     let mouseLeaveAttached = false
     let isSelecting = false
 
-    function onMouseDown() { isSelecting = true }
+    function onMouseDown() {
+      if (!editor.isEditable) return
+      isSelecting = true
+    }
     function onMouseUp()   { isSelecting = false }
 
     function onMouseMove(event: MouseEvent) {
+      // Просмотр: ручки перетаскивания нет. Проверяем В МОМЕНТ события, а не
+      // при подписке, — тогда переключение editable в рантайме подхватывается
+      // само. Слушатели висят на document, поэтому v-if в шаблоне сюда не
+      // достаёт и своя проверка обязательна.
+      if (!editor.isEditable) {
+        if (dragHandleState.visible) {
+          clearHover()
+          dragHandleState.visible = false
+          dragHandleState.blockEl = null
+        }
+        return
+      }
       if (dragHandleState.isDragging) return   // ← ключевая проверка
       if (isSelecting) return                  // ← не мешаем выделению текста
 

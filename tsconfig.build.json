@@ -1,0 +1,21 @@
+{
+  // Сборочный конфиг ТОЛЬКО для генерации типов (vite-plugin-dts).
+  //
+  // Корневой tsconfig.json тянет в программу vite.config.ts и "types": ["node"] —
+  // плагину это не нужно, а лишние файлы в программе замедляют разбор и
+  // добавляют в dist декларации, которых в пакете быть не должно.
+  //
+  // declarationMap выключен намеренно: карты ссылаются на src/, а в пакет едет
+  // только dist (см. "files" в package.json), то есть у потребителя ссылки
+  // ведут в никуда.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit":         false,
+    "declaration":    true,
+    "declarationMap": false,
+    "sourceMap":      false,
+    "outDir":         "dist"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "demo"]
+}

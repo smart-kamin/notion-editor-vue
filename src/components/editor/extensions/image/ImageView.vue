@@ -14,6 +14,39 @@ const props = defineProps<{
 
 const imgRef = ref<HTMLImageElement | null>(null)
 
+/**
+ * Можно ли сейчас править.
+ *
+ * `editor.isEditable` — обычное свойство, не реактивное для Vue, поэтому
+ * computed от него МОЖЕТ остаться устаревшим: setEditable перерисовки этого
+ * node view не вызывает. Значит на него нельзя опираться там, где от ответа
+ * зависит правка документа.
+ *
+ * Отсюда два уровня:
+ *   * показ — этим computed плюс правилом CSS от корня редактора
+ *     (.doc-editor--readonly), а корневой класс ставит Vue и он всегда свеж;
+ *   * ДЕЙСТВИЕ — свежим чтением canEdit() в каждом обработчике. Команды Tiptap
+ *     работают и в нередактируемом редакторе, поэтому зависший тулбар без
+ *     этой проверки менял бы документ в режиме просмотра.
+ */
+const editable = computed<boolean>(() => props.editor?.isEditable !== false)
+
+function canEdit(): boolean {
+  return props.editor?.isEditable !== false
+}
+
+/** Выровнять картинку — только когда правка разрешена. */
+function align_(value: 'left' | 'center' | 'right') {
+  if (!canEdit()) return
+  props.updateAttributes({ align: value })
+}
+
+/** Удалить картинку — только когда правка разрешена. */
+function removeImage() {
+  if (!canEdit()) return
+  props.deleteNode()
+}
+
 // ── Resize ────────────────────────────────────────────────────────────────────
 
 const isResizing = ref(false)
@@ -22,6 +55,7 @@ let startX    = 0
 let startWidth = 0
 
 function startResize(e: MouseEvent, side: 'left' | 'right') {
+  if (!canEdit()) return
   e.preventDefault()
   resizeSide  = side
   startX      = e.clientX
@@ -33,6 +67,7 @@ function startResize(e: MouseEvent, side: 'left' | 'right') {
 }
 
 function onResizeMove(e: MouseEvent) {
+  if (!canEdit()) return
   const delta    = resizeSide === 'right' ? e.clientX - startX : startX - e.clientX
   const newWidth = Math.max(80, Math.round(startWidth + delta))
   props.updateAttributes({ width: newWidth })
@@ -86,12 +121,12 @@ const imgStyle = computed(() => ({
     >
       <!-- Тулбар -->
       <Transition name="img-tb">
-        <div v-if="selected || isResizing" class="img-nv__toolbar">
+        <div v-if="(selected || isResizing) && editable" class="img-nv__toolbar">
           <button
             class="img-nv__tb-btn"
             :class="{ 'img-nv__tb-btn--active': align === 'left' }"
             title="По левому краю"
-            @mousedown.prevent="updateAttributes({ align: 'left' })"
+            @mousedown.prevent="align_('left')"
           >
             <AlignLeft :size="13" />
           </button>
@@ -99,7 +134,7 @@ const imgStyle = computed(() => ({
             class="img-nv__tb-btn"
             :class="{ 'img-nv__tb-btn--active': align === 'center' }"
             title="По центру"
-            @mousedown.prevent="updateAttributes({ align: 'center' })"
+            @mousedown.prevent="align_('center')"
           >
             <AlignCenter :size="13" />
           </button>
@@ -107,7 +142,7 @@ const imgStyle = computed(() => ({
             class="img-nv__tb-btn"
             :class="{ 'img-nv__tb-btn--active': align === 'right' }"
             title="По правому краю"
-            @mousedown.prevent="updateAttributes({ align: 'right' })"
+            @mousedown.prevent="align_('right')"
           >
             <AlignRight :size="13" />
           </button>
@@ -117,7 +152,7 @@ const imgStyle = computed(() => ({
           <button
             class="img-nv__tb-btn img-nv__tb-btn--danger"
             title="Удалить"
-            @mousedown.prevent="deleteNode"
+            @mousedown.prevent="removeImage"
           >
             <Trash2 :size="13" />
           </button>
@@ -135,7 +170,7 @@ const imgStyle = computed(() => ({
       />
 
       <!-- Ручки ресайза -->
-      <template v-if="selected || isResizing">
+      <template v-if="(selected || isResizing) && editable">
         <div
           class="img-nv__handle img-nv__handle--left"
           @mousedown.prevent="e => startResize(e, 'left')"
